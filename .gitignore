@@ -1,0 +1,16 @@
+*.amlignore
+*.azureml
+*pythonenv
+*.venv
+*dask-worker-space
+*mlruns
+*.vscode
+*catboost_info
+*.mag
+*.ckpt
+*lightning_logs
+*.DS_Store
+*.pyc
+*config.json
+*.log
+scratch/*
