@@ -1,1 +1,1 @@
-Notebooks folder for Istat-IAS project
+Notebooks folder for Istat-AIS project
