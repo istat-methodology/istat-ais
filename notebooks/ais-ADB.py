@@ -141,7 +141,11 @@ print(len(pandas_ais_dataset))
 
 # COMMAND ----------
 
-print(len(vessels_mmsi))
+pandas_rotte_dataset.loc[1,'mmsi'] = 'aaaaaaaa'
+
+# COMMAND ----------
+
+print(vessels_mmsi)
 
 # COMMAND ----------
 
@@ -150,35 +154,24 @@ rotte_dataset_mmsi_in_ais = pandas_rotte_dataset[pandas_rotte_dataset['mmsi'].is
 
 # COMMAND ----------
 
-a = pandas_rotte_dataset.filter(pandas_rotte_dataset['mmsi'].isin(vessels_mmsi))
-#b = a.unique()
-
-#print(len(b))
-
-# COMMAND ----------
-
-print(len(a))
-
-# COMMAND ----------
-
-print(len(rotte_dataset_mmsi_in_ais))
+len(rotte_dataset_mmsi_in_ais)
 
 # COMMAND ----------
 
 #rotte_mmsi = [x.mmsi for x in rotte_dataset.select('mmsi').distinct().collect()]
 
-rotte_mmsi = pandas_rotte_dataset['mmsi'].unique().astype(int)
+rotte_mmsi = pandas_rotte_dataset['mmsi'].unique()#.astype(int)
 print(len(rotte_mmsi))
 
 # COMMAND ----------
 
-print(vessels_mmsi)
+utils = Utils()
+mmsi_intersection = utils.intersect(vessels_mmsi, rotte_mmsi.tolist())
+print(f'result intersection: {mmsi_intersection}')
 
 # COMMAND ----------
 
-utils = Utils()
-mmsi_intersection = utils.intersect(vessels_mmsi, rotte_mmsi)
-print(f'result intersection: {mmsi_intersection}')
+print(len(mmsi_intersection))
 
 # COMMAND ----------
 
