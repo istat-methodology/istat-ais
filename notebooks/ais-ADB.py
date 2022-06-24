@@ -48,6 +48,7 @@ rotte_arrivi_porti_all_fname = config.get('ELABORATION','rotte_arrivi_porti_all_
 # COMMAND ----------
 
 print(ais_dataset_name)
+print(rotte_dataset_name)
 
 # COMMAND ----------
 
@@ -80,43 +81,32 @@ rotte_dataset=rotte_dataset.na.drop()
 
 # COMMAND ----------
 
-#Keep only rows with no wrong values
-rotte_dataset_f = rotte_dataset.where(rotte_dataset.stamp != 'stamp')
-#display(pandas_rotte_dataset_f)
-
-# COMMAND ----------
-
-#build timestamp column to be added to rotte dataframe
-stamp = rotte_dataset_f['stamp'].astype('float32')
-from datetime import datetime
-timestamp_column = stamp.apply(lambda x: datetime.fromtimestamp(x)) 
-#print(timestamp_column)
-rotte_dataset_f['timestamp']=timestamp_column
-
-# COMMAND ----------
-
 import pyspark.pandas as ps
 pandas_rotte_dataset = ps.DataFrame(rotte_dataset)
 
 # COMMAND ----------
 
+pandas_ais_dataset = ps.DataFrame(ais_dataset)
+
+# COMMAND ----------
+
 #Keep only rows with no wrong values
-pandas_rotte_dataset_f = pandas_rotte_dataset.where(pandas_rotte_dataset.stamp != 'stamp')
+pandas_rotte_dataset = pandas_rotte_dataset.where(pandas_rotte_dataset.stamp != 'stamp')
 #display(pandas_rotte_dataset_f)
 
 # COMMAND ----------
 
 #build timestamp column to be added to rotte dataframe
-stamp = pandas_rotte_dataset_f['stamp'].astype('float32')
+stamp = pandas_rotte_dataset['stamp'].astype('float32')
 from datetime import datetime
 timestamp_column = stamp.apply(lambda x: datetime.fromtimestamp(x)) 
 #print(timestamp_column)
-pandas_rotte_dataset_f['timestamp']=timestamp_column
+pandas_rotte_dataset['timestamp']=timestamp_column
 #display(pandas_rotte_dataset_f)
 
 # COMMAND ----------
 
-pandas_rotte_dataset_f=pandas_rotte_dataset_f.sort_values(by=['mmsi','stamp','lng','lat'],ascending=True)
+pandas_rotte_dataset=pandas_rotte_dataset.sort_values(by=['mmsi','stamp','lng','lat'],ascending=True)
 
 # COMMAND ----------
 
@@ -146,8 +136,43 @@ class Utils(object):
 
 # COMMAND ----------
 
-rotte_mmsi = [x.mmsi for x in rotte_dataset.select('mmsi').distinct().collect()]
+print(len(pandas_rotte_dataset))
+print(len(pandas_ais_dataset))
+
+# COMMAND ----------
+
+print(len(vessels_mmsi))
+
+# COMMAND ----------
+
+
+rotte_dataset_mmsi_in_ais = pandas_rotte_dataset[pandas_rotte_dataset['mmsi'].isin(vessels_mmsi)]
+
+# COMMAND ----------
+
+a = pandas_rotte_dataset.filter(pandas_rotte_dataset['mmsi'].isin(vessels_mmsi))
+#b = a.unique()
+
+#print(len(b))
+
+# COMMAND ----------
+
+print(len(a))
+
+# COMMAND ----------
+
+print(len(rotte_dataset_mmsi_in_ais))
+
+# COMMAND ----------
+
+#rotte_mmsi = [x.mmsi for x in rotte_dataset.select('mmsi').distinct().collect()]
+
+rotte_mmsi = pandas_rotte_dataset['mmsi'].unique().astype(int)
 print(len(rotte_mmsi))
+
+# COMMAND ----------
+
+print(vessels_mmsi)
 
 # COMMAND ----------
 
@@ -163,12 +188,12 @@ print(f'result intersection: {mmsi_intersection}')
 #rotte_dataset_simplified = rotte_dataset[rotte_dataset['mmsi'].astype(int).isin(mmsi_intersection)]
 #rotte_dataset_simplified.head()
 
-rotte_dataset_simplified = pandas_rotte_dataset_f[pandas_rotte_dataset_f['mmsi'].astype(int).isin(mmsi_intersection)]
+rotte_dataset_simplified = pandas_rotte_dataset[pandas_rotte_dataset['mmsi'].astype(int).isin(mmsi_intersection)]
 #len(rotte_dataset_simplified)
 
 # COMMAND ----------
 
-print(len(pandas_rotte_dataset_f))
+print(len(pandas_rotte_dataset))
 print(len(rotte_dataset_simplified))
 
 # COMMAND ----------
