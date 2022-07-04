@@ -110,93 +110,145 @@ pandas_rotte_dataset=pandas_rotte_dataset.sort_values(by=['mmsi','stamp','lng','
 
 # COMMAND ----------
 
-class Utils(object):
-   def intersect(self, nums1, nums2):
-      """
-      :type nums1: List[int]
-      :type nums2: List[int]
-      :rtype: List[int]
-      """
-      m = {}
-      print(len(nums1))
-      print(len(nums2))
-      if len(nums1)<len(nums2):
-         nums1,nums2 = nums2,nums1
-      for i in nums1:
-         if i not in m:
-            m[i] = 1
-         else:
-            m[i]+=1
-      result = []
-      for i in nums2:
-         if i in m and m[i]:
-            m[i]-=1
-            result.append(i)
-      return result
-
-# COMMAND ----------
-
 print(len(pandas_rotte_dataset))
 print(len(pandas_ais_dataset))
 
 # COMMAND ----------
 
-pandas_rotte_dataset.loc[1,'mmsi'] = 'aaaaaaaa'
+rotte_dataset_simplified = pandas_rotte_dataset[pandas_rotte_dataset['mmsi'].isin(vessels_mmsi)]
 
 # COMMAND ----------
 
-print(vessels_mmsi)
+rotte_dataset_simplified = rotte_dataset_simplified.reset_index()
 
 # COMMAND ----------
 
-
-rotte_dataset_mmsi_in_ais = pandas_rotte_dataset[pandas_rotte_dataset['mmsi'].isin(vessels_mmsi)]
-
-# COMMAND ----------
-
-len(rotte_dataset_mmsi_in_ais)
-
-# COMMAND ----------
-
-#rotte_mmsi = [x.mmsi for x in rotte_dataset.select('mmsi').distinct().collect()]
-
-rotte_mmsi = pandas_rotte_dataset['mmsi'].unique()#.astype(int)
-print(len(rotte_mmsi))
-
-# COMMAND ----------
-
-utils = Utils()
-mmsi_intersection = utils.intersect(vessels_mmsi, rotte_mmsi.tolist())
-print(f'result intersection: {mmsi_intersection}')
-
-# COMMAND ----------
-
-print(len(mmsi_intersection))
-
-# COMMAND ----------
-
-#Drop rows whose mmsi is not in rotte_092021_simplified(rotte_092021_mmsi,vessels_mmsi) from rotte_092021,
-# i.e. get only rows whos mmsi is in mmsi_intersection
-
-#rotte_dataset_simplified = rotte_dataset[rotte_dataset['mmsi'].astype(int).isin(mmsi_intersection)]
-#rotte_dataset_simplified.head()
-
-rotte_dataset_simplified = pandas_rotte_dataset[pandas_rotte_dataset['mmsi'].astype(int).isin(mmsi_intersection)]
-#len(rotte_dataset_simplified)
-
-# COMMAND ----------
-
-print(len(pandas_rotte_dataset))
 print(len(rotte_dataset_simplified))
 
 # COMMAND ----------
 
-ELABORAZIONE DELLE ROTTE
-
+display(rotte_dataset_simplified)
 
 # COMMAND ----------
 
-from haversine import haversine, Unit
+# MAGIC %md
+# MAGIC ELABORAZIONE DELLE ROTTE
+
+# COMMAND ----------
+
+from datetime import datetime
+import haversine as hs
+from haversine import Unit
+
+# COMMAND ----------
+
+#elaborazione degli arrivi (df)
+def arrival_elaboration(df_rotte):
+    #df_rotte = rottesort
+
+    dim=len(df_rotte)
+    print("df_rotte len before: ",dim)
+
+    df_arrival = ps.DataFrame(columns = ['row','mmsi','arrival','departure','lng','lat','lng_orig','lat_orig','speed','status'])
+
+    oldmmsi=0
+    sumrec=0
+    start=0
+    lat_orig=0
+    lng_orig=0
+    oldlng=0
+    oldlat=0
+    start='unknown'
+    i=0
+    status=0 ###0-nuovo 1-arrivato 2-partito
+
+    start_time = datetime.now()
+
+    df_rotte_pandas = df_rotte.to_pandas_on_spark()
+    for item in df_rotte_pandas.itertuples():
+        
+        try:
+            #item = df_rotte.iloc[i]
+            mmsi,time_voyage,lng,lat,speed = item.mmsi,item.timestamp,float(item.lng),float(item.lat),int(item.speed)
+
+            if(mmsi!=oldmmsi):
+                if (status==1):#si riferisce alla old ship
+                    df_arrival=df_arrival.append({'row':i,'mmsi':oldmmsi,'arrival':start,
+                           'departure':end,'lng':oldlng,'lat':oldlat,'lng_orig':lng_orig,'lat_orig':lat_orig,
+                            'speed':speed,'status':status},ignore_index=True)
+                start,status,lng_orig,lat_orig,oldlng,oldlat,oldmmsi='unknown',0,0,0,0,0,mmsi
+                oldmmsi = mmsi
+    
+            if(speed==0):          
+                if (status==0):
+                    start,oldlng,oldlat = time_voyage,lng,lat
+                
+                #To calculate distance in meters
+                if(status<2):
+                    loc1=(lat,lng)
+                    loc2=(oldlat,oldlng)
+            
+                    distance = hs.haversine(loc1,loc2,unit=Unit.METERS)
+            
+                    if(distance > 3000.0):
+                        #print(distance)
+                        #if ((abs(oldlng-lng)+abs(oldlat-lat))>0.3):
+                        df_arrival=df_arrival.append({'row':i,'mmsi':oldmmsi,'arrival':start,
+                           'departure':end,'lng':oldlng,'lat':oldlat,
+                                       'lng_orig':lng_orig,'lat_orig':lat_orig,'speed':speed,'status':status},ignore_index=True)
+                        start,lng_orig,lat_orig,oldlng,oldlat = time_voyage,oldlng,oldlat,lng,lat
+                    
+                if(status==2):
+                    start,lng_orig,lat_orig,oldlng,oldlat = time_voyage,oldlng,oldlat,lng,lat
+                    
+                end=time_voyage
+                status=1
+                
+            if (speed>0):
+                if(status==1):
+                    loc1=(lat,lng)
+                    loc2=(oldlat,oldlng)
+                    distance = hs.haversine(loc1,loc2,unit=Unit.METERS)
+                    if(distance > 3000.0):
+                        df_arrival=df_arrival.append({'row':i,'mmsi':oldmmsi,'arrival':start,
+                           'departure':end,'lng':oldlng,'lat':oldlat,
+                            'lng_orig':lng_orig,'lat_orig':lat_orig,'speed':speed,'status':2},ignore_index=True)
+                        
+                        status,lng_orig,lat_orig = 2,oldlng,oldlat
+                if(status==0):
+                    status=2
+                   
+            #stampa di controllo
+            if(i%1000000 == 0):
+               print(i)
+        except Exception as e:
+            print(i," ",speed)
+            print(e)
+        i+=1
+    #end for
+    
+    #scrive l'ultimo record
+    if(status==1):
+            df_arrival=df_arrival.append({'row':i,'mmsi':oldmmsi,'arrival':start,
+                        'departure':end,'lng':oldlng,'lat':oldlat,
+                        'lng_orig':lng_orig,'lat_orig':lat_orig,'speed':speed,'status':status},ignore_index=True)
+
+ 
+    end_time = datetime.now()
+    print('Duration: {}'.format(end_time - start_time))
+    print("df_arrival len after: ",len(df_arrival))
+    
+    return(df_arrival)
+
+# COMMAND ----------
+
+df_rotte = rotte_dataset_simplified[['mmsi','stamp','timestamp','lng','lat','speed']]
+df_rotte = df_rotte.sort_values(by=['mmsi','stamp'],ascending=[True,True])
+df_rotte = df_rotte.reset_index()
+
+# COMMAND ----------
+
+df_arrival= arrival_elaboration(df_rotte)
 
 # COMMAND ----------
 
