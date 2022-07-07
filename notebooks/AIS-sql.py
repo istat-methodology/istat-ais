@@ -75,3 +75,37 @@ rotte_dataset=rotte_dataset.na.drop()
 # COMMAND ----------
 
 
+rotte_dataset = rotte_dataset.filter(rotte_dataset.stamp != "stamp")
+
+# COMMAND ----------
+
+from pyspark.sql.types import FloatType
+
+stamp = rotte_dataset.select(
+            (rotte_dataset.stamp.cast(FloatType())).alias('stamp'),
+)
+
+stamp.printSchema()
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col,udf
+from datetime import datetime
+
+def f(a):
+    tmp = datetime.fromtimestamp(a)
+    print(tmp)
+    return tmp
+
+# COMMAND ----------
+
+datetime.fromtimestamp(1630488290)
+
+# COMMAND ----------
+
+from pyspark.sql.types import FloatType
+reg_f = udf(lambda x : f(x), FloatType())
+
+# COMMAND ----------
+
+rotte_dataset.withColumn("timestamp",reg_f(col('stamp').cast(FloatType()))).show()

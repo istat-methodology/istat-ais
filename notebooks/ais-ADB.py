@@ -143,7 +143,7 @@ from haversine import Unit
 # COMMAND ----------
 
 #elaborazione degli arrivi (df)
-def arrival_elaboration(df_rotte):
+def arrival_elaboration(df_rotte,df_rotte_cols):
     #df_rotte = rottesort
 
     dim=len(df_rotte)
@@ -164,12 +164,15 @@ def arrival_elaboration(df_rotte):
 
     start_time = datetime.now()
 
-    df_rotte_pandas = df_rotte.to_pandas_on_spark()
-    for item in df_rotte_pandas.itertuples():
-        
+    #df_rotte_pandas = df_rotte.to_pandas_on_spark()
+    #for item in df_rotte_pandas.itertuples():
+    df_rotte_spark = spark.createDataFrame(df_rotte,df_rotte_cols)
+    for item in df_rotte_spark.collect():    
+    
         try:
             #item = df_rotte.iloc[i]
-            mmsi,time_voyage,lng,lat,speed = item.mmsi,item.timestamp,float(item.lng),float(item.lat),int(item.speed)
+            #mmsi,time_voyage,lng,lat,speed = item.mmsi,item.timestamp,float(item.lng),float(item.lat),int(item.speed)
+            mmsi,time_voyage,lng,lat,speed = item["mmsi"],item["timestamp"],float(item["lng"]),float(item["lat"]),int(item["speed"])
 
             if(mmsi!=oldmmsi):
                 if (status==1):#si riferisce alla old ship
@@ -248,7 +251,20 @@ df_rotte = df_rotte.reset_index()
 
 # COMMAND ----------
 
-df_arrival= arrival_elaboration(df_rotte)
+df_rotte_spark = spark.createDataFrame(df_rotte,df_rotte_columns)
+df_rotte_spark.printSchema()
+
+# COMMAND ----------
+
+df_rotte_columns = ['mmsi','stamp','timestamp','lng','lat','speed']
+
+# COMMAND ----------
+
+df_arrival= arrival_elaboration(df_rotte,df_rotte_columns)
+
+# COMMAND ----------
+
+
 
 # COMMAND ----------
 
