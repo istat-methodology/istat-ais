@@ -52,7 +52,7 @@ print(rotte_dataset_name)
 
 # COMMAND ----------
 
-ais_dataset=spark.read.format("csv").option("header",True).option("multiline",False).option("delimiter",",").load(ais_dataset_name)
+ais_dataset=spark.read.format("csv").option("inferSchema",True).option("header",True).option("multiline",False).option("delimiter",",").load(ais_dataset_name)
 
 # COMMAND ----------
 
@@ -72,7 +72,7 @@ print(len(vessels_mmsi))
 
 # COMMAND ----------
 
-rotte_dataset=spark.read.format("csv").option("header",True).option("multiline",False).option("delimiter",",").load(rotte_dataset_name)
+rotte_dataset=spark.read.format("csv").option("inferSchema",True).option("header",True).option("multiline",False).option("delimiter",",").load(rotte_dataset_name)
 
 # COMMAND ----------
 
@@ -87,6 +87,10 @@ pandas_rotte_dataset = ps.DataFrame(rotte_dataset)
 # COMMAND ----------
 
 pandas_ais_dataset = ps.DataFrame(ais_dataset)
+
+# COMMAND ----------
+
+pandas_rotte_dataset.where(pandas_rotte_dataset.stamp == 'stamp')
 
 # COMMAND ----------
 
@@ -166,7 +170,10 @@ def arrival_elaboration(df_rotte,df_rotte_cols):
 
     #df_rotte_pandas = df_rotte.to_pandas_on_spark()
     #for item in df_rotte_pandas.itertuples():
-    df_rotte_spark = spark.createDataFrame(df_rotte,df_rotte_cols)
+   # df_rotte_spark = spark.createDataFrame(df_rotte,df_rotte_cols)
+    
+    df_rotte_spark = df_rotte.to_spark()
+    #for item in df_rotte_spark.itertuples():
     for item in df_rotte_spark.collect():    
     
         try:
@@ -251,16 +258,11 @@ df_rotte = df_rotte.reset_index()
 
 # COMMAND ----------
 
-df_rotte_spark = spark.createDataFrame(df_rotte,df_rotte_columns)
-df_rotte_spark.printSchema()
+dtype_df_rotte_schema = {'mmsi':'float','stamp':'integer','timestamp':'timestamp','lng':'double','lat':'double','speed':'integer'}
 
 # COMMAND ----------
 
 df_rotte_columns = ['mmsi','stamp','timestamp','lng','lat','speed']
-
-# COMMAND ----------
-
-df_arrival= arrival_elaboration(df_rotte,df_rotte_columns)
 
 # COMMAND ----------
 
