@@ -81,6 +81,14 @@ rotte_dataset=rotte_dataset.na.drop()
 
 # COMMAND ----------
 
+rotte_mmsi = [x.mmsi for x in rotte_dataset.select('mmsi').distinct().collect()]
+
+# COMMAND ----------
+
+print(len(rotte_mmsi))
+
+# COMMAND ----------
+
 import pyspark.pandas as ps
 pandas_rotte_dataset = ps.DataFrame(rotte_dataset)
 
@@ -90,13 +98,7 @@ pandas_ais_dataset = ps.DataFrame(ais_dataset)
 
 # COMMAND ----------
 
-pandas_rotte_dataset.where(pandas_rotte_dataset.stamp == 'stamp')
-
-# COMMAND ----------
-
-#Keep only rows with no wrong values
-pandas_rotte_dataset = pandas_rotte_dataset.where(pandas_rotte_dataset.stamp != 'stamp')
-#display(pandas_rotte_dataset_f)
+display(pandas_ais_dataset)
 
 # COMMAND ----------
 
@@ -111,6 +113,11 @@ pandas_rotte_dataset['timestamp']=timestamp_column
 # COMMAND ----------
 
 pandas_rotte_dataset=pandas_rotte_dataset.sort_values(by=['mmsi','stamp','lng','lat'],ascending=True)
+
+# COMMAND ----------
+
+print(rotte_dataset.count())
+print(ais_dataset.count())
 
 # COMMAND ----------
 
@@ -131,10 +138,6 @@ print(len(rotte_dataset_simplified))
 
 # COMMAND ----------
 
-display(rotte_dataset_simplified)
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC ELABORAZIONE DELLE ROTTE
 
@@ -143,6 +146,12 @@ display(rotte_dataset_simplified)
 from datetime import datetime
 import haversine as hs
 from haversine import Unit
+
+# COMMAND ----------
+
+df_rotte = rotte_dataset_simplified[['mmsi','stamp','timestamp','lng','lat','speed']]
+df_rotte = df_rotte.sort_values(by=['mmsi','stamp'],ascending=[True,True])
+df_rotte = df_rotte.reset_index()
 
 # COMMAND ----------
 
@@ -252,21 +261,43 @@ def arrival_elaboration(df_rotte,df_rotte_cols):
 
 # COMMAND ----------
 
-df_rotte = rotte_dataset_simplified[['mmsi','stamp','timestamp','lng','lat','speed']]
-df_rotte = df_rotte.sort_values(by=['mmsi','stamp'],ascending=[True,True])
-df_rotte = df_rotte.reset_index()
+#elaborazione degli arrivi (df) con funzione lambda
+def arrival_elaboration_mmsi(mmsi,df_mmsi):
+    print(mmsi+',  '+type(df_mmsi)
+     
 
 # COMMAND ----------
 
-dtype_df_rotte_schema = {'mmsi':'float','stamp':'integer','timestamp':'timestamp','lng':'double','lat':'double','speed':'integer'}
+ rotte_mmsi = df_rotte['mmsi'].unique()
 
 # COMMAND ----------
 
-df_rotte_columns = ['mmsi','stamp','timestamp','lng','lat','speed']
+type(rotte_mmsi[0])
 
 # COMMAND ----------
 
 
+a=rotte_mmsi.apply(lambda x: arrival_elaboration_mmsi(x,df_rotte))
+
+ 
+
+# COMMAND ----------
+
+a
+
+
+# COMMAND ----------
+
+mmssi_unique=df_rotte['mmsi']
+
+display(mmssi_unique)
+
+mmssi_unique
+
+
+# COMMAND ----------
+
+df=arrival_elaboration(df_rotte,df_rotte_columns)
 
 # COMMAND ----------
 
